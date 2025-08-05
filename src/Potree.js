@@ -105,6 +105,17 @@ export let maxNodesLoading = 4;
 
 export const debug = {};
 
+// wsw changes and additional functions to add a coordinate offset
+export let coordinateOffset = {x: 0, y: 0, z: 0};
+
+export function setCoordinateOffset(offx, offy, offz) {
+	coordinateOffset.x = offx;
+	coordinateOffset.y = offy;
+	coordinateOffset.z = offz;
+};
+
+// end wsw
+
 let scriptPath = "";
 
 if (document.currentScript && document.currentScript.src) {
