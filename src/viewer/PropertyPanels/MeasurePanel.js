@@ -27,10 +27,20 @@ export class MeasurePanel{
 		let copyIconPath = Potree.resourcePath + '/icons/copy.svg';
 
 		for (let point of points) {
-			let x = Utils.addCommas(point.x.toFixed(3));
-			let y = Utils.addCommas(point.y.toFixed(3));
-			let z = Utils.addCommas(point.z.toFixed(3));
+			// wsw
+			let newX = point.x;
+			let newY = point.y;
+			let newZ = point.z;
 
+			let xoff = newX + Potree.coordinateOffset.x;
+			let yoff = newY + Potree.coordinateOffset.y;
+			let zoff = newZ + Potree.coordinateOffset.z;
+						
+			let x = Utils.addCommas(xoff.toFixed(3));
+			let y = Utils.addCommas(yoff.toFixed(3));
+			let z = Utils.addCommas(zoff.toFixed(3));
+			// end wsw
+			
 			let row = $(`
 				<tr>
 					<td><span>${x}</span></td>
@@ -44,7 +54,10 @@ export class MeasurePanel{
 
 			this.elCopy = row.find("img[name=copy]");
 			this.elCopy.click( () => {
-				let msg = point.toArray().map(c => c.toFixed(3)).join(", ");
+				// wsw
+				let coordArr = [x, y, z];
+				let msg = coordArr.join(", ");
+				// end wsw
 				Utils.clipboardCopy(msg);
 
 				this.viewer.postMessage(
