@@ -617,11 +617,9 @@ export class Measure extends THREE.Object3D {
 				// wsw
 				let coordArr = position.toArray();
 
-				for (let i = 0; i < coordArr.length; i++){
-					coordArr[0] = coordArr[0] + Potree.coordinateOffset.x;
-					coordArr[1] = coordArr[1] + Potree.coordinateOffset.y;
-					coordArr[2] = coordArr[2] + Potree.coordinateOffset.z;
-				};
+				coordArr[0] = coordArr[0] + Potree.coordinateOffset.x;
+				coordArr[1] = coordArr[1] + Potree.coordinateOffset.y;
+				coordArr[2] = coordArr[2] + Potree.coordinateOffset.z;
 				
 				let msg = coordArr.map(p => Utils.addCommas(p.toFixed(2))).join(" / ");
 				// end wsw
