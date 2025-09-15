@@ -4,6 +4,8 @@ import {PointCloudTree, PointCloudTreeNode} from "./PointCloudTree.js";
 import {PointCloudOctreeGeometryNode} from "./PointCloudOctreeGeometry.js";
 import {Utils} from "./utils.js";
 import {PointCloudMaterial} from "./materials/PointCloudMaterial.js";
+import { Matrix4 } from "../libs/three.js/build/three.module.js";
+import { Vector3 } from "../libs/three.js/build/three.module.js";
 
 
 export class PointCloudOctreeNode extends PointCloudTreeNode {
@@ -56,44 +58,94 @@ export class PointCloudOctreeNode extends PointCloudTreeNode {
 		return children;
 	}
 
-	getPointsInBox(boxNode){
-
-		if(!this.sceneNode){
+	getPointsInBox(boxNode) {
+		if (!this.sceneNode) {
 			return null;
 		}
 
-		let buffer = this.geometryNode.buffer;
+		const attributes = this.sceneNode.geometry.attributes;
+		const position = attributes.position;
 
-		let posOffset = buffer.offset("position");
-		let stride = buffer.stride;
-		let view = new DataView(buffer.data);
+		const width = boxNode.scale.x;
+		const height = boxNode.scale.y;
+		const depth = boxNode.scale.z;
 
-		let worldToBox = boxNode.matrixWorld.clone().invert();
-		let objectToBox = new THREE.Matrix4().multiplyMatrices(worldToBox, this.sceneNode.matrixWorld);
+		let boxMatrixWorld = boxNode.matrixWorld;     // Matrix4 aus deinem Beispiel
+		let boxInverse = new THREE.Matrix4().copy(boxMatrixWorld).invert();
 
 		let inBox = [];
+		// console.log(position.count);
+		// console.log(objectToBox)
+		
+		for (let i = 0; i < position.count; i++) {
+			const pos = new Vector3();
+			const arr = position.array;
+			const x = arr[3 * i];
+			const y = arr[3 * i + 1];
+			const z = arr[3 * i + 2];
+			pos.set(x, y, z);
+			//lokal -> Welt
+			pos.applyMatrix4(this.sceneNode.matrixWorld);
 
-		let pos = new THREE.Vector4();
-		for(let i = 0; i < buffer.numElements; i++){
-			let x = view.getFloat32(i * stride + posOffset + 0, true);
-			let y = view.getFloat32(i * stride + posOffset + 4, true);
-			let z = view.getFloat32(i * stride + posOffset + 8, true);
+			//Welt -> BoxLokal
+			pos.applyMatrix4(boxInverse);
 
-			pos.set(x, y, z, 1);
-			pos.applyMatrix4(objectToBox);
-
-			if(-0.5 < pos.x && pos.x < 0.5){
-				if(-0.5 < pos.y && pos.y < 0.5){
-					if(-0.5 < pos.z && pos.z < 0.5){
-						pos.set(x, y, z, 1).applyMatrix4(this.sceneNode.matrixWorld);
-						inBox.push(new THREE.Vector3(pos.x, pos.y, pos.z));
-					}
-				}
+			//console.log(pos)
+			if (
+				pos.x >= -0.5 && pos.x <= 0.5 &&
+				pos.y >= -0.5 && pos.y <= 0.5 &&
+				pos.z >= -0.5 && pos.z <= 0.5
+			) {
+				// Punkt liegt in der VolumeBox
+				let point = new Vector3(pos.x, pos.y, pos.z);
+				point.applyMatrix4(boxMatrixWorld);
+				inBox.push({
+					point
+				});
 			}
 		}
 
 		return inBox;
 	}
+
+	// getPointsInBox(boxNode){
+
+	// 	if(!this.sceneNode){
+	// 		return null;
+	// 	}
+
+	// 		let buffer = this.geometryNode.buffer;
+
+	// 	let posOffset = buffer.offset("position");
+	// 	let stride = buffer.stride;
+	// 	let view = new DataView(buffer.data);
+
+	// 	let worldToBox = boxNode.matrixWorld.clone().invert();
+	// 	let objectToBox = new THREE.Matrix4().multiplyMatrices(worldToBox, this.sceneNode.matrixWorld);
+
+	// 	let inBox = [];
+
+	// 	let pos = new THREE.Vector4();
+	// 	for(let i = 0; i < buffer.numElements; i++){
+	// 		let x = view.getFloat32(i * stride + posOffset + 0, true);
+	// 		let y = view.getFloat32(i * stride + posOffset + 4, true);
+	// 		let z = view.getFloat32(i * stride + posOffset + 8, true);
+
+	// 		pos.set(x, y, z, 1);
+	// 		pos.applyMatrix4(objectToBox);
+
+	// 		if(-0.5 < pos.x && pos.x < 0.5){
+	// 			if(-0.5 < pos.y && pos.y < 0.5){
+	// 				if(-0.5 < pos.z && pos.z < 0.5){
+	// 					pos.set(x, y, z, 1).applyMatrix4(this.sceneNode.matrixWorld);
+	// 					inBox.push(new THREE.Vector3(pos.x, pos.y, pos.z));
+	// 				}
+	// 			}
+	// 		}
+	// 	}
+
+	// 	return inBox;
+	// }
 
 	get name () {
 		return this.geometryNode.name;

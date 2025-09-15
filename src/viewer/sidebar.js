@@ -19,6 +19,140 @@ import {Images360} from "../modules/Images360/Images360.js";
 
 import JSON5 from "../../libs/json5-2.1.3/json5.mjs";
 
+// imports Nils
+import {Points} from "../Points.js";
+
+// Grabenvolumen Hilfsfunktion
+async function calculateVolumeUnderMeasurement(viewer, areaMeasurement, spacing = 0.5) {
+	console.log(areaMeasurement);
+
+	// 1️⃣ Fläche zu Polygon/Mesh konvertieren
+	const points = areaMeasurement.points.map(p => p.position);
+	const polygonXY = points.map(p => new THREE.Vector2(p.x, p.y));
+
+	const vertices = [];
+	const vertices2d = [];
+
+	points.forEach( v => {
+		vertices.push(v.x, v.y, v.z);
+		vertices2d.push(new THREE.Vector2(v.x, v.y));
+	});
+
+	const bufferAttr = new Float32Array(vertices);	
+	// console.log(vertices);
+	// const geometry = new THREE.BufferGeometry();
+	// geometry.setAttribute( 'position', new THREE.Float32BufferAttribute(vertices, 3) );
+	// geometry.computeBoundingBox();
+	// console.log(geometry)
+	// const material = new THREE.MeshBasicMaterial({ visible: false });
+	// const mesh = new THREE.Mesh(geometry, material);
+	
+	var triangles, mesh;
+	var geometry = new THREE.BufferGeometry();
+	var material = new THREE.MeshBasicMaterial();
+
+	triangles = THREE.ShapeUtils.triangulateShape(vertices2d, []);
+	console.log(triangles)
+	geometry.setIndex(triangles.flat());
+	geometry.setAttribute("position", new THREE.BufferAttribute(bufferAttr, 3));
+	geometry.computeBoundingBox();
+	console.log(geometry)
+	
+	mesh = new THREE.Mesh(geometry, material);
+	console.log(mesh);
+
+	viewer.scene.scene.add(mesh); // nur temporär
+
+	// Bounding Box für Raster
+	const bbox = geometry.boundingBox;
+	const minX = bbox.min.x;
+	const maxX = bbox.max.x;
+	const minY = bbox.min.y;
+	const maxY = bbox.max.y;
+	console.log(bbox);
+
+	// Hilfsfunktion: Punkt-in-Polygon-Test
+	function pointInPolygon(x, y, poly) {
+	let inside = false;
+	for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+		const xi = poly[i].x, yi = poly[i].y;
+		const xj = poly[j].x, yj = poly[j].y;
+		const intersect = ((yi > y) !== (yj > y)) &&
+						(x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+		if (intersect) inside = !inside;
+	}
+	return inside;
+	}
+
+	// Raycaster zur Höhenbestimmung
+	const raycaster = new THREE.Raycaster();
+	const down = new THREE.Vector3(0, 0, -1);
+
+	let totalVolume = 0;
+	let numSamples = 0;
+
+	const pointCloud = viewer.scene.pointclouds[0];
+	const summary = new Map();
+
+	for (let y = minY; y <= maxY; y += spacing) {
+		for (let x = minX; x <= maxX; x += spacing) {
+
+			if (!pointInPolygon(x, y, polygonXY)) continue;
+
+			// 2️⃣ Höhe auf der Fläche bestimmen
+			const origin = new THREE.Vector3(x, y, (bbox.max.z || 1000) + 100); // hoch genug starten
+			raycaster.set(origin, down);
+			const intersects = raycaster.intersectObject(mesh, true);
+			// console.log(intersects)
+			if (intersects.length === 0) continue;
+			const startZ = intersects[0].point.z;
+			// console.log(startZ)
+			// 3️⃣ Punktwolkenpunkte unterhalb suchen
+			let minZ = null;
+			
+			const startOrigin = new THREE.Vector3(x, y, startZ);
+			raycaster.set(startOrigin, down);
+			const cloudIntersects = raycaster.intersectObject(pointCloud, true);
+			
+			let minDistToRay = 100;
+			let maxHeight = null;
+			let tempIntersect = null;
+
+			for (const intersect of cloudIntersects){
+				// console.log(intersect)
+				if (intersect.distanceToRay > 0.06) continue;
+				if (intersect.distanceToRay < minDistToRay){
+					minDistToRay = intersect.minDistToRay;
+					maxHeight = intersect.distance;
+					tempIntersect = intersect;
+					// console.log(intersect)
+				}
+
+			}
+
+			if (maxHeight !== null) {
+				const cellVolume = maxHeight * spacing * spacing;
+				totalVolume += cellVolume;
+				numSamples++;
+			}
+
+			const key = `${x};${y}`;
+			summary.set(key, tempIntersect);
+
+		}
+	}
+
+	viewer.scene.scene.remove(mesh);
+
+	console.log(summary);
+	console.log(`Berechnetes Volumen: ${totalVolume.toFixed(3)} m³ (${numSamples} Rasterzellen)`);
+
+	return totalVolume;
+}
+
+let count = 0;
+let cut_array = new Map();
+
 export class Sidebar{
 
 	constructor(viewer){
@@ -267,6 +401,76 @@ export class Sidebar{
 				let jsonNode = annotationsRoot.children.find(child => child.data.uuid === annotation.uuid);
 				$.jstree.reference(jsonNode.id).deselect_all();
 				$.jstree.reference(jsonNode.id).select_node(jsonNode.id);
+			}
+		));
+
+		// Button Nils einzelne Schnitte setzen (testing)
+		elToolbar.append(this.createToolIcon(
+			Potree.resourcePath + '/icons/area.svg',
+			'[title]tt.test_nils',
+			() => {
+				$('#menu_measurements').next().slideDown(); ;
+				// das erste volume/box von den vorhandenen ziehen
+				let box = this.viewer.scene.volumes[0].clone();
+				// console.log(`Die erste Box mit dem Volumen: ${box.getVolume()}`);
+				console.log(`Der Schnitt wird prozessiert, die Ausgangsbox ist: ${box}`);
+				
+				// urspruengliche Position, Scale und Rotation uebernehmen
+				let og_position_z = box.position.z;
+				let og_scale_z = box.scale.z;
+				
+				box.position.z = og_position_z + (og_scale_z / 2);
+				box.scale.z = 0.005;
+				box.updateMatrixWorld(true);
+
+				const pointCloud = this.viewer.scene.pointclouds[0];
+				// console.log(box, pointCloud.visibleNodes);
+
+				const pointNodes = pointCloud.visibleNodes.map((node, index) => {
+					return node.getPointsInBox(box);
+				});
+
+				const flatNodes = pointNodes.flat();
+
+				// console.log(flatNodes);
+				console.log(`Der Schnitt mit der ID ${count} wurde erfolgreich prozessiert und zu den Schnitten hinzugefügt.`)
+				cut_array.set(count.toString(), flatNodes);
+				count++;
+			}
+		));
+
+		// Button um fertig gesammelte Schnitte weiter zu verarbeiten Nils
+		elToolbar.append(this.createToolIcon(
+			Potree.resourcePath + '/icons/reset_tools.svg',
+			'[title]Schnitte verarbeiten',
+			() => {
+				// console.log(cut_array);
+
+				let obj = Object.fromEntries(cut_array.entries());
+
+				// JSON-String mit Einrückung (2 Spaces)
+				let jsonContent = JSON.stringify(obj, null, 2);
+
+				// Datei bauen
+				let blob = new Blob([jsonContent], { type: "application/json" });
+				let a = document.createElement("a");
+				a.href = URL.createObjectURL(blob);
+				a.download = "cut_export.json";
+				a.click();
+
+				console.log(`Export abgeschlossen: ${cut_array.size} Gruppen, ${jsonContent.length} Zeichen`);
+			}
+		));
+
+		// Button um 2,5d flaeche zu bestimmen 
+		elToolbar.append(this.createToolIcon(
+			Potree.resourcePath + '/icons/reset_tools.svg',
+			'[title]Grabenvolumen berechnen',
+			() => {
+				const area = viewer.scene.measurements[0];
+				calculateVolumeUnderMeasurement(viewer, area, 0.05).then(vol => {
+					alert(`Volumen: ${vol.toFixed(2)} m³`);
+				});
 			}
 		));
 
