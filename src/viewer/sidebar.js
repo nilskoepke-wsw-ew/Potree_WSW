@@ -1,4 +1,3 @@
-
 import * as THREE from "../../libs/three.js/build/three.module.js";
 import {GeoJSONExporter} from "../exporter/GeoJSONExporter.js"
 import {DXFExporter} from "../exporter/DXFExporter.js"
@@ -23,7 +22,7 @@ import JSON5 from "../../libs/json5-2.1.3/json5.mjs";
 import {Points} from "../Points.js";
 
 // Grabenvolumen Hilfsfunktion
-async function calculateVolumeUnderMeasurement(viewer, areaMeasurement, spacing = 0.5) {
+async function calculateVolumeUnderMeasurement(viewer, areaMeasurement, spacing = 0.1) {
 	console.log(areaMeasurement);
 
 	// 1️⃣ Fläche zu Polygon/Mesh konvertieren
@@ -39,13 +38,6 @@ async function calculateVolumeUnderMeasurement(viewer, areaMeasurement, spacing 
 	});
 
 	const bufferAttr = new Float32Array(vertices);	
-	// console.log(vertices);
-	// const geometry = new THREE.BufferGeometry();
-	// geometry.setAttribute( 'position', new THREE.Float32BufferAttribute(vertices, 3) );
-	// geometry.computeBoundingBox();
-	// console.log(geometry)
-	// const material = new THREE.MeshBasicMaterial({ visible: false });
-	// const mesh = new THREE.Mesh(geometry, material);
 	
 	var triangles, mesh;
 	var geometry = new THREE.BufferGeometry();
@@ -104,27 +96,32 @@ async function calculateVolumeUnderMeasurement(viewer, areaMeasurement, spacing 
 			raycaster.set(origin, down);
 			const intersects = raycaster.intersectObject(mesh, true);
 			// console.log(intersects)
-			if (intersects.length === 0) continue;
+			if (intersects.length === 0) {
+				console.log("Punkt sollte im Polygon liegen, aber es wurde kein Schnittpunkt mit dem Mesh berechnet.")
+				continue
+			};
 			const startZ = intersects[0].point.z;
 			// console.log(startZ)
 			// 3️⃣ Punktwolkenpunkte unterhalb suchen
 			let minZ = null;
 			
 			const startOrigin = new THREE.Vector3(x, y, startZ);
+			// console.log(startOrigin)
 			raycaster.set(startOrigin, down);
+			raycaster.params.Points.threshold = 0.05;
 			const cloudIntersects = raycaster.intersectObject(pointCloud, true);
 			
 			let minDistToRay = 100;
 			let maxHeight = null;
-			let tempIntersect = null;
+			// let tempIntersect = null;
 
 			for (const intersect of cloudIntersects){
 				// console.log(intersect)
 				if (intersect.distanceToRay > 0.06) continue;
 				if (intersect.distanceToRay < minDistToRay){
-					minDistToRay = intersect.minDistToRay;
+					minDistToRay = intersect.distanceToRay;
 					maxHeight = intersect.distance;
-					tempIntersect = intersect;
+					// tempIntersect = intersect;
 					// console.log(intersect)
 				}
 
@@ -135,19 +132,115 @@ async function calculateVolumeUnderMeasurement(viewer, areaMeasurement, spacing 
 				totalVolume += cellVolume;
 				numSamples++;
 			}
+			else{
+				console.log("Es konnte kein Punkt der Wolke gefunden werden.")
+			}
 
 			const key = `${x};${y}`;
-			summary.set(key, tempIntersect);
+			// summary.set(key, tempIntersect);
 
 		}
 	}
 
 	viewer.scene.scene.remove(mesh);
 
-	console.log(summary);
+	// console.log(summary);
 	console.log(`Berechnetes Volumen: ${totalVolume.toFixed(3)} m³ (${numSamples} Rasterzellen)`);
 
 	return totalVolume;
+}
+
+function voxelizeBox(box, voxelSize) {
+	const nx = Math.ceil(box.scale.x / voxelSize);
+	const ny = Math.ceil(box.scale.y / voxelSize);
+	const nz = Math.ceil(box.scale.z / voxelSize);
+
+	const stepX = 1 / nx;
+	const stepY = 1 / ny;
+	const stepZ = 1 / nz;
+	
+	const min = box.boundingBox.min.clone();
+
+	const voxels = [];
+
+	for (let i = 0; i < nx; i++) {
+		for (let j = 0; j < ny; j++) {
+			for (let k = 0; k < nz; k++) {
+				// Mittelpunkt in lokalen Koordinaten
+				const localPos = new THREE.Vector3(
+					min.x + (i + 0.5) * stepX,
+					min.y + (j + 0.5) * stepY,
+					min.z + (k + 0.5) * stepZ
+				);
+				// console.log(localPos);
+				// Weltkoordinaten berechnen
+				const worldPos = localPos.clone().applyMatrix4(box.matrixWorld);
+
+				voxels.push(worldPos);
+			}
+		}
+	}
+
+	return voxels;
+}
+
+async function calculateVoxelVolume(box, pointCloud, voxelSize = 0.5, clusterThreshold = 0.05) {
+    const voxels = voxelizeBox(box, voxelSize);
+    const raycaster = new THREE.Raycaster();
+    const down = new THREE.Vector3(0, 0, -1);
+	console.log(`Box wurde in ${voxels.length} Voxel aufgeteilt`)
+    let totalVolume = 0;
+    let voxelCount = 0;
+
+    for (const voxelCenter of voxels) {
+        // Strahl von "oben" starten
+        const origin = voxelCenter.clone();
+		// console.log(origin);
+        raycaster.set(origin, down);
+		raycaster.params.Points.threshold = 0.05;
+
+        // Raycast auf die Punktwolke
+        const intersects = raycaster.intersectObject(pointCloud, true);
+		// console.log(intersects);
+        if (intersects.length === 0) {
+            continue; // keine Punkte unter diesem Strahl
+        }
+
+        // Höhen sortieren
+        const zs = intersects.map(i => i.point.z).sort((a, b) => a - b);
+		// console.log(zs);
+       
+		// Cluster bilden (Abstände in Z prüfen)
+        const clusters = [];
+		let currentCluster = [];
+		
+		for (let i = 0; i < zs.length; i++) {
+			if (currentCluster.length === 0) {
+				currentCluster.push(zs[i]);
+			} else {
+				// Prüfe Abstand zum vorherigen Wert
+				if (Math.abs(zs[i] - zs[i - 1]) <= clusterThreshold) {
+					currentCluster.push(zs[i]);
+				} else {
+					clusters.push(currentCluster);
+					currentCluster = [zs[i]];
+				}
+			}
+		}
+		if (currentCluster.length > 0) {
+			clusters.push(currentCluster);
+		}
+		// Jetzt enthält clusters die gruppierten Höhenwerte
+		// console.log(clusters.length)
+		// Odd-Even-Test → innen, wenn ungerade Anzahl Cluster
+        if (clusters.length % 2 === 1) {
+            totalVolume += Math.pow(voxelSize, 3);
+            voxelCount++;
+        }
+    }
+
+    console.log(`Berechnetes Volumen: ${totalVolume.toFixed(3)} m³ (${voxelCount} Voxel im Körper)`);
+    return totalVolume;
 }
 
 let count = 0;
@@ -406,8 +499,8 @@ export class Sidebar{
 
 		// Button Nils einzelne Schnitte setzen (testing)
 		elToolbar.append(this.createToolIcon(
-			Potree.resourcePath + '/icons/area.svg',
-			'[title]tt.test_nils',
+			Potree.resourcePath + '/icons/Add_Cut.svg',
+			'[title]Schnitt setzen',
 			() => {
 				$('#menu_measurements').next().slideDown(); ;
 				// das erste volume/box von den vorhandenen ziehen
@@ -420,7 +513,7 @@ export class Sidebar{
 				let og_scale_z = box.scale.z;
 				
 				box.position.z = og_position_z + (og_scale_z / 2);
-				box.scale.z = 0.005;
+				box.scale.z = 0.01;
 				box.updateMatrixWorld(true);
 
 				const pointCloud = this.viewer.scene.pointclouds[0];
@@ -434,14 +527,45 @@ export class Sidebar{
 
 				// console.log(flatNodes);
 				console.log(`Der Schnitt mit der ID ${count} wurde erfolgreich prozessiert und zu den Schnitten hinzugefügt.`)
+				alert(`Der Schnitt mit der ID ${count} wurde erfolgreich prozessiert und zu den Schnitten hinzugefügt.`)
+				
 				cut_array.set(count.toString(), flatNodes);
 				count++;
 			}
 		));
 
+		// // Button Nils Bounding Box exportieren
+		// elToolbar.append(this.createToolIcon(
+		// 	Potree.resourcePath + '/icons/area.svg',
+		// 	'Box-Punkte bestimmen.',
+		// 	() => {
+		// 		$('#menu_measurements').next().slideDown(); ;
+		// 		// das erste volume/box von den vorhandenen ziehen
+		// 		let box = this.viewer.scene.volumes[0].clone();
+		// 		// console.log(`Die erste Box mit dem Volumen: ${box.getVolume()}`);
+		// 		console.log(`Der Schnitt wird prozessiert, die Ausgangsbox ist: ${box}`);
+				
+		// 		const pointCloud = this.viewer.scene.pointclouds[0];
+		// 		// console.log(box, pointCloud.visibleNodes);
+
+		// 		const pointNodes = pointCloud.visibleNodes.map((node, index) => {
+		// 			return node.getPointsInBox(box);
+		// 		});
+
+		// 		const flatNodes = pointNodes.flat();
+
+		// 		// console.log(flatNodes);
+		// 		console.log(`Die Punkte in der angegebenen Clip-Box wurden prozessiert und sind bereit für den Export.`)
+		// 		alert(`Die Punkte in der angegebenen Clip-Box wurden prozessiert und sind bereit für den Export.`)
+				
+		// 		cut_array.set(count.toString(), flatNodes);
+		// 		count++;
+		// 	}
+		// ));
+
 		// Button um fertig gesammelte Schnitte weiter zu verarbeiten Nils
 		elToolbar.append(this.createToolIcon(
-			Potree.resourcePath + '/icons/reset_tools.svg',
+			Potree.resourcePath + '/icons/Export_Cut.svg',
 			'[title]Schnitte verarbeiten',
 			() => {
 				// console.log(cut_array);
@@ -464,7 +588,7 @@ export class Sidebar{
 
 		// Button um 2,5d flaeche zu bestimmen 
 		elToolbar.append(this.createToolIcon(
-			Potree.resourcePath + '/icons/reset_tools.svg',
+			Potree.resourcePath + '/icons/Grabenvolumen.svg',
 			'[title]Grabenvolumen berechnen',
 			() => {
 				const area = viewer.scene.measurements[0];
@@ -472,6 +596,27 @@ export class Sidebar{
 					alert(`Volumen: ${vol.toFixed(2)} m³`);
 				});
 			}
+
+		));
+
+		// Button um Volumen zu bestimmen 
+		elToolbar.append(this.createToolIcon(
+			Potree.resourcePath + '/icons/Objektvolumen.svg',
+			'[title]Objektvolumen berechnen',
+			() => {
+				// das erste volume/box von den vorhandenen ziehen
+				let box = this.viewer.scene.volumes[0].clone();
+				const pointCloud = this.viewer.scene.pointclouds[0];
+
+				console.log(box)
+				// console.log(`Die erste Box mit dem Volumen: ${box.getVolume()}`);
+				// console.log(`Das Volumen wird prozessiert, die Ausgangsbox ist: ${box}`);
+				
+				calculateVoxelVolume(box, pointCloud, 0.2, 0.05).then(vol => {
+					alert(`Volumen: ${vol.toFixed(2)} m³`);
+				});
+			}
+
 		));
 
 		// REMOVE ALL
