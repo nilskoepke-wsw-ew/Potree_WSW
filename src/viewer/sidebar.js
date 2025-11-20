@@ -291,6 +291,11 @@ export class Sidebar{
 
 		// ANGLE
 		let elToolbar = $('#tools');
+		let elVolumes = $('#volumes');
+		let elAnnotation = $('#annotation');
+		let elRemove = $('#remove');
+
+
 		elToolbar.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/angle.png',
 			'[title]tt.angle_measurement',
@@ -440,7 +445,7 @@ export class Sidebar{
 		));
 
 		// VOLUME
-		elToolbar.append(this.createToolIcon(
+		elVolumes.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/volume.svg',
 			'[title]tt.volume_measurement',
 			() => {
@@ -454,7 +459,7 @@ export class Sidebar{
 		));
 
 		// SPHERE VOLUME
-		elToolbar.append(this.createToolIcon(
+		elVolumes.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/sphere_distances.svg',
 			'[title]tt.volume_measurement',
 			() => { 
@@ -483,8 +488,8 @@ export class Sidebar{
 		));
 
 		// ANNOTATION
-		elToolbar.append(this.createToolIcon(
-			Potree.resourcePath + '/icons/annotation.svg',
+		elAnnotation.append(this.createToolIcon(
+			Potree.resourcePath + '/icons/annotation_wsw.svg',
 			'[title]tt.annotation',
 			() => {
 				$('#menu_measurements').next().slideDown(); ;
@@ -492,10 +497,113 @@ export class Sidebar{
 
 				let annotationsRoot = $("#jstree_scene").jstree().get_json("annotations");
 				let jsonNode = annotationsRoot.children.find(child => child.data.uuid === annotation.uuid);
+					
 				$.jstree.reference(jsonNode.id).deselect_all();
 				$.jstree.reference(jsonNode.id).select_node(jsonNode.id);
 			}
 		));
+
+		// Button Annotations exportieren
+		elAnnotation.append(this.createToolIcon(
+			Potree.resourcePath + '/icons/annotation_wsw_download.svg',
+			'[title]Aktuelle Beschriftungen exportieren',
+			() => {
+				$('#menu_measurements').next().slideDown(); ;
+				let annotations = this.viewer.scene.annotations.children;
+				let annotationList = [];
+				for (let i = 0; i < annotations.length; i++){
+					annotationList.push({
+						position: annotations[i].position,
+						title: annotations[i].title,
+						description: annotations[i].description
+					})
+				}
+				
+				console.log(annotationList);
+
+				try {
+					// 1. JSON-Text erzeugen
+					let jsonString = JSON.stringify(annotationList, null, 2);
+
+					// 2. Blob erzeugen
+					let blob = new Blob([jsonString], { type: "application/json" });
+
+					// 3. Download-Link erzeugen und klicken
+					let url = URL.createObjectURL(blob);
+					let a = document.createElement("a");
+					a.href = url;
+					a.download = "annotations.json";
+					a.click();
+
+					// 4. Aufräumen
+					URL.revokeObjectURL(url);
+					alert(`Es wurden ${annotationList.length} Bemerkungen erfolgreich heruntergeladen.`)
+				} catch (err){
+					console.error(err);
+					alert("Fehler beim Exportieren der Bemerkungen.");
+				}
+			}
+		));
+
+		elAnnotation.append(this.createToolIcon(
+			Potree.resourcePath + '/icons/annotation_wsw_upload.svg',
+			'[title]Beschriftungen aus JSON laden',
+			() => {
+		
+				// Hidden File-Input erzeugen
+				let input = document.createElement("input");
+				input.type = "file";
+				input.accept = "application/json";
+		
+				input.onchange = async (event) => {
+					let file = event.target.files[0];
+					if (!file) return;
+		
+					try {
+						// Datei einlesen
+						let text = await file.text();
+						let annotationList = JSON.parse(text);
+		
+						// Prüfen, ob Liste gültig ist
+						if (!Array.isArray(annotationList)) {
+							alert("Die JSON-Datei enthält keine Liste von Beschriftungen.");
+							return;
+						}
+		
+						// Jede Annotation hinzufügen
+						annotationList.forEach(item => {
+		
+							// Position in Vector3 umwandeln
+							let pos = new THREE.Vector3(
+								item.position.x || item.position[0],
+								item.position.y || item.position[1],
+								item.position.z || item.position[2]
+							);
+		
+							// Annotation erzeugen
+							let annotation = new Potree.Annotation({
+								position: pos,
+								title: item.title || "Ohne Titel",
+								description: item.description || ""
+							});
+		
+							// In Szene einfügen
+							this.viewer.scene.annotations.add(annotation);
+						});
+		
+						console.log("Imported annotations: ", annotationList);
+		
+					} catch (err) {
+						console.error(err);
+						alert("Fehler beim Lesen der JSON-Datei.");
+					}
+				};
+		
+				// Upload-Dialog öffnen
+				input.click();
+			}
+		));
+		
 
 		// Button Nils einzelne Schnitte setzen (testing)
 		elToolbar.append(this.createToolIcon(
@@ -587,7 +695,7 @@ export class Sidebar{
 		));
 
 		// Button um 2,5d flaeche zu bestimmen 
-		elToolbar.append(this.createToolIcon(
+		elVolumes.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/Grabenvolumen.svg',
 			'[title]Grabenvolumen berechnen',
 			() => {
@@ -600,7 +708,7 @@ export class Sidebar{
 		));
 
 		// Button um Volumen zu bestimmen 
-		elToolbar.append(this.createToolIcon(
+		elVolumes.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/Objektvolumen.svg',
 			'[title]Objektvolumen berechnen',
 			() => {
@@ -620,7 +728,7 @@ export class Sidebar{
 		));
 
 		// REMOVE ALL
-		elToolbar.append(this.createToolIcon(
+		elRemove.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/reset_tools.svg',
 			'[title]tt.remove_all_measurement',
 			() => {
@@ -953,6 +1061,14 @@ export class Sidebar{
 				
 				$.jstree.reference(jsonNode.id).rename_node(jsonNode.id, annotation.title);
 			});
+
+			annotation.addEventListener("annotation_removed", (e) => {
+				console.log("event listener getriggert");
+				let annotationsRoot = $("#jstree_scene").jstree().get_json("annotations");
+				let jsonNode = annotationsRoot.children.find(child => child.data.uuid === annotation.uuid);
+				console.log(annotationsRoot);
+				tree.jstree("delete_node", jsonNode.id);
+			});
 		};
 
 		let onCameraAnimationAdded = (e) => {
@@ -1053,10 +1169,19 @@ export class Sidebar{
 			tree.jstree("delete_node", jsonNode.id);
 		};
 
+		// let onAnnotationRemoved = (e) => {
+		// 	let annotationsRoot = $("#jstree_scene").jstree().get_json("annotations");
+		// 	let jsonNode = annotationsRoot.children.find(child => child.data.uuid === e.profile.uuid);
+			
+		// 	tree.jstree("delete_node", jsonNode.id);
+		// };
+
 		this.viewer.scene.addEventListener("measurement_removed", onMeasurementRemoved);
 		this.viewer.scene.addEventListener("volume_removed", onVolumeRemoved);
 		this.viewer.scene.addEventListener("polygon_clip_volume_removed", onPolygonClipVolumeRemoved);
 		this.viewer.scene.addEventListener("profile_removed", onProfileRemoved);
+		// this.viewer.scene.annotations.addEventListener("annotation_removed", onAnnotationRemoved);
+
 
 		{
 			let annotationIcon = `${Potree.resourcePath}/icons/annotation.svg`;

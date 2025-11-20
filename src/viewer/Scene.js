@@ -320,9 +320,9 @@ export class Scene extends EventDispatcher{
 			this.removeProfile(this.profiles[0]);
 		}
 
-		while (this.volumes.length > 0) {
-			this.removeVolume(this.volumes[0]);
-		}
+		// while (this.volumes.length > 0) {
+		// 	this.removeVolume(this.volumes[0]);
+		// }
 	}
 
 	removeAllClipVolumes(){
@@ -433,5 +433,14 @@ export class Scene extends EventDispatcher{
 
 	removeAnnotation(annotationToRemove) {
 		this.annotations.remove(annotationToRemove);
+		// let index = this.annotations.indexOf(annotationToRemove);
+		// if (index > -1) {
+			// this.annotations.splice(index, 1);
+		annotationToRemove.dispatchEvent({
+			'type': 'annotation_removed',
+			// 'scene': this,
+			'annotation': annotationToRemove
+		});
+		// }
 	}
 };
