@@ -10,6 +10,8 @@ export class AnnotationPanel{
 		this._update = () => { this.update(); };
 
 		let copyIconPath = `${Potree.resourcePath}/icons/copy.svg`;
+		let removeIconPath = Potree.resourcePath + '/icons/remove.svg';
+		
 		this.elContent = $(`
 		<div class="propertypanel_content">
 			<table>
@@ -42,10 +44,17 @@ export class AnnotationPanel{
 						to modify title and description. 
 				</div>
 
+				<img name="remove" class="button-icon" src="${removeIconPath}" style="width: 16px; height: 16px"/>
 			</div>
 
 		</div>
 		`);
+		
+		this.elRemove = this.elContent.find("img[name=remove]");
+		this.elRemove.click( () => {
+			this.viewer.scene.removeAnnotation(annotation);
+			this.elContent.remove();
+		});
 
 		this.elCopyPosition = this.elContent.find("img[name=copyPosition]");
 		this.elCopyPosition.click( () => {
@@ -71,6 +80,8 @@ export class AnnotationPanel{
 			const description = this.elDescription.html();
 			annotation.description = description;
 		}, false);
+
+		this.propertiesPanel.addVolatileListener(annotation, "marker_removed", this._update);
 
 		this.update();
 	}
