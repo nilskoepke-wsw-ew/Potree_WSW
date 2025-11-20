@@ -114,6 +114,8 @@ export function setCoordinateOffset(offx, offy, offz) {
 	coordinateOffset.z = offz;
 };
 
+export let annotationPath = "";
+
 // end wsw
 
 let scriptPath = "";
