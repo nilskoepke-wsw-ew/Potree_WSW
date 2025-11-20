@@ -12,6 +12,9 @@ export class AnnotationTool extends EventDispatcher{
 		this.viewer = viewer;
 		this.renderer = viewer.renderer;
 
+		// this.onRemove = (e) => { this.scene.remove(e.annotation);};
+		// viewer.scene.addEventListener('annotation_removed', this.onRemove);
+
 		this.sg = new THREE.SphereGeometry(0.1);
 		this.sm = new THREE.MeshNormalMaterial();
 		this.s = new THREE.Mesh(this.sg, this.sm);
