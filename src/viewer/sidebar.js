@@ -22,7 +22,7 @@ import JSON5 from "../../libs/json5-2.1.3/json5.mjs";
 import {Points} from "../Points.js";
 
 // Grabenvolumen Hilfsfunktion
-async function calculateVolumeUnderMeasurement(viewer, areaMeasurement, spacing = 0.1) {
+async function calculateVolumeUnderMeasurement(viewer, areaMeasurement) {
 	console.log(areaMeasurement);
 
 	// 1️⃣ Fläche zu Polygon/Mesh konvertieren
@@ -61,6 +61,9 @@ async function calculateVolumeUnderMeasurement(viewer, areaMeasurement, spacing 
 	const maxX = bbox.max.x;
 	const minY = bbox.min.y;
 	const maxY = bbox.max.y;
+
+	const spacing_x = (maxX - minX) / 50;
+	const spacing_y = (maxY - minY) / 50;
 	console.log(bbox);
 
 	// Hilfsfunktion: Punkt-in-Polygon-Test
@@ -86,8 +89,8 @@ async function calculateVolumeUnderMeasurement(viewer, areaMeasurement, spacing 
 	const pointCloud = viewer.scene.pointclouds[0];
 	const summary = new Map();
 
-	for (let y = minY; y <= maxY; y += spacing) {
-		for (let x = minX; x <= maxX; x += spacing) {
+	for (let y = minY; y <= maxY; y += spacing_y) {
+		for (let x = minX; x <= maxX; x += spacing_x) {
 
 			if (!pointInPolygon(x, y, polygonXY)) continue;
 
@@ -114,10 +117,10 @@ async function calculateVolumeUnderMeasurement(viewer, areaMeasurement, spacing 
 			let minDistToRay = 100;
 			let maxHeight = null;
 			// let tempIntersect = null;
-
+			// console.log(cloudIntersects);
 			for (const intersect of cloudIntersects){
 				// console.log(intersect)
-				if (intersect.distanceToRay > 0.06) continue;
+				if (intersect.distanceToRay > 0.05) continue;
 				if (intersect.distanceToRay < minDistToRay){
 					minDistToRay = intersect.distanceToRay;
 					maxHeight = intersect.distance;
@@ -128,7 +131,7 @@ async function calculateVolumeUnderMeasurement(viewer, areaMeasurement, spacing 
 			}
 
 			if (maxHeight !== null) {
-				const cellVolume = maxHeight * spacing * spacing;
+				const cellVolume = maxHeight * spacing_x * spacing_y;
 				totalVolume += cellVolume;
 				numSamples++;
 			}
@@ -150,22 +153,20 @@ async function calculateVolumeUnderMeasurement(viewer, areaMeasurement, spacing 
 	return totalVolume;
 }
 
-function voxelizeBox(box, voxelSize) {
-	const nx = Math.ceil(box.scale.x / voxelSize);
-	const ny = Math.ceil(box.scale.y / voxelSize);
-	const nz = Math.ceil(box.scale.z / voxelSize);
-
-	const stepX = 1 / nx;
-	const stepY = 1 / ny;
-	const stepZ = 1 / nz;
+function voxelizeBox(box, numSegments) {
 	
 	const min = box.boundingBox.min.clone();
-
+	
+	const stepX = box.scale.x / numSegments;
+	const stepY = box.scale.y / numSegments;
+	const stepZ = box.scale.z / numSegments;
+	
+	const voxelVolume = stepX * stepY * stepZ;
 	const voxels = [];
 
-	for (let i = 0; i < nx; i++) {
-		for (let j = 0; j < ny; j++) {
-			for (let k = 0; k < nz; k++) {
+	for (let i = 0; i < numSegments; i++) {
+		for (let j = 0; j < numSegments; j++) {
+			for (let k = 0; k < numSegments; k++) {
 				// Mittelpunkt in lokalen Koordinaten
 				const localPos = new THREE.Vector3(
 					min.x + (i + 0.5) * stepX,
@@ -180,18 +181,27 @@ function voxelizeBox(box, voxelSize) {
 			}
 		}
 	}
+	const data = {
+		"voxels": voxels,
+		"voxelVolume": voxelVolume
+	};
 
-	return voxels;
+	return data;
 }
 
-async function calculateVoxelVolume(box, pointCloud, voxelSize = 0.5, clusterThreshold = 0.05) {
-    const voxels = voxelizeBox(box, voxelSize);
+async function calculateVoxelVolume(box, pointCloud, clusterThreshold = 0.05) {
+    const data = voxelizeBox(box, 25);
+	
+	const voxels = data.voxels;
+	const voxelVolume = data.voxelVolume;
+
     const raycaster = new THREE.Raycaster();
     const down = new THREE.Vector3(0, 0, -1);
-	console.log(`Box wurde in ${voxels.length} Voxel aufgeteilt`)
+	console.log(`Box wurde in ${voxels.length} Voxel mit einem Volumen von jeweils ${voxelVolume} aufgeteilt`)
     let totalVolume = 0;
     let voxelCount = 0;
 
+	
     for (const voxelCenter of voxels) {
         // Strahl von "oben" starten
         const origin = voxelCenter.clone();
@@ -234,7 +244,7 @@ async function calculateVoxelVolume(box, pointCloud, voxelSize = 0.5, clusterThr
 		// console.log(clusters.length)
 		// Odd-Even-Test → innen, wenn ungerade Anzahl Cluster
         if (clusters.length % 2 === 1) {
-            totalVolume += Math.pow(voxelSize, 3);
+            totalVolume += voxelVolume;
             voxelCount++;
         }
     }
@@ -700,7 +710,7 @@ export class Sidebar{
 			'[title]Grabenvolumen berechnen',
 			() => {
 				const area = viewer.scene.measurements[0];
-				calculateVolumeUnderMeasurement(viewer, area, 0.05).then(vol => {
+				calculateVolumeUnderMeasurement(viewer, area).then(vol => {
 					alert(`Volumen: ${vol.toFixed(2)} m³`);
 				});
 			}
@@ -720,7 +730,7 @@ export class Sidebar{
 				// console.log(`Die erste Box mit dem Volumen: ${box.getVolume()}`);
 				// console.log(`Das Volumen wird prozessiert, die Ausgangsbox ist: ${box}`);
 				
-				calculateVoxelVolume(box, pointCloud, 0.2, 0.05).then(vol => {
+				calculateVoxelVolume(box, pointCloud, 0.05).then(vol => {
 					alert(`Volumen: ${vol.toFixed(2)} m³`);
 				});
 			}
