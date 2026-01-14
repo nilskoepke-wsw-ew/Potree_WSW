@@ -103,11 +103,11 @@ POINT
 8
 layer_pointCloud
 10
-${x}
+${x + Potree.coordinateOffset.x}
 20
-${y}
+${y + Potree.coordinateOffset.y}
 30
-${z}
+${z + Potree.coordinateOffset.z}
 `;
 
 		return dxfSection;
@@ -138,19 +138,19 @@ $INSBASE
 9
 $EXTMIN
 10
-${pCloud.minX}
+${pCloud.minX + Potree.coordinateOffset.x}
 20
-${pCloud.minY}
+${pCloud.minY + Potree.coordinateOffset.y}
 30
-${pCloud.minZ}
+${pCloud.minZ + Potree.coordinateOffset.z}
 9
 $EXTMAX
 10
-${pCloud.maxX}
+${pCloud.maxX + Potree.coordinateOffset.x}
 20
-${pCloud.maxY}
+${pCloud.maxY + Potree.coordinateOffset.y}
 30
-${pCloud.maxZ}
+${pCloud.maxZ + Potree.coordinateOffset.z}
 0
 ENDSEC
 `;
@@ -173,5 +173,93 @@ ENDSEC
 
 		return dxf;
 	}
+
+	// Methode fuer WSW - DXF Ausgabe eines Arrays mit Punktobjekten welches typischerweise bei der Erstellung von Schnitten generiert wurde
+	static toString_pointArray(point_array) {
+
+		let pX = 0;
+		let pY = 0;
+		let pZ = 0;
+
+		let minX = Number.MAX_VALUE;
+		let minY = Number.MAX_VALUE;
+		let minZ = Number.MAX_VALUE;
+
+		let maxX = -Number.MAX_VALUE;
+		let maxY = -Number.MAX_VALUE;
+		let maxZ = -Number.MAX_VALUE;
+
+		let dxfBody = `0
+SECTION
+2
+ENTITIES
+`;
+		
+		for (let i = 0; i < point_array.length; i++) {
+			pX = point_array[i].point.x + Potree.coordinateOffset.x;
+			pY = point_array[i].point.y + Potree.coordinateOffset.y;
+			pZ = point_array[i].point.z + Potree.coordinateOffset.z;
+			
+			dxfBody += DXFProfileExporter.plotPCloudPoint(pX, pY, pZ);
+
+			if (maxX < pX) maxX = pX;
+			if (maxY < pY) maxY = pY;
+			if (maxZ < pZ) maxZ = pZ;
+			
+			if (minX > pX) minX = pX;
+			if (minY > pY) minY = pY;
+			if (minZ > pZ) minZ = pZ;
+			
+		}
+
+		dxfBody += `0
+ENDSEC
+`;
+
+
+		const dxfHeader = `999
+DXF created from potree
+0
+SECTION
+2
+HEADER
+9
+$ACADVER
+1
+AC1006
+9
+$INSBASE
+10
+0.0
+20
+0.0
+30
+0.0
+9
+$EXTMIN
+10
+${minX}
+20
+${minY}
+30
+${minZ}
+9
+$EXTMAX
+10
+${maxX}
+20
+${maxY}
+30
+${maxZ}
+0
+ENDSEC
+`;
+
+
+		const dxf = dxfHeader + dxfBody + '0\nEOF';
+
+		return dxf;
+	}
+
 
 }
