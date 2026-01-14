@@ -20,6 +20,8 @@ import JSON5 from "../../libs/json5-2.1.3/json5.mjs";
 
 // imports Nils
 import {Points} from "../Points.js";
+import {DXFProfileExporter} from "../exporter/DXFProfileExporter.js"
+
 
 // Grabenvolumen Hilfsfunktion
 async function calculateVolumeUnderMeasurement(viewer, areaMeasurement) {
@@ -640,6 +642,8 @@ export class Sidebar{
 				const pointNodes = pointCloud.visibleNodes.map((node, index) => {
 					return node.getPointsInBox(box);
 				});
+				
+				// console.log(pointNodes)
 
 				const flatNodes = pointNodes.flat();
 
@@ -649,6 +653,7 @@ export class Sidebar{
 				
 				cut_array.set(count.toString(), flatNodes);
 				count++;
+				console.log(cut_array)
 			}
 		));
 
@@ -686,21 +691,35 @@ export class Sidebar{
 			Potree.resourcePath + '/icons/Export_Cut.svg',
 			'[title]Schnitte verarbeiten',
 			() => {
-				// console.log(cut_array);
+				// -------------------------------- Fuer den Export der Schnitte als JSON -------------------------------------- 
+				// let obj = Object.fromEntries(cut_array.entries());
 
+				// // JSON-String mit Einrückung (2 Spaces)
+				// let jsonContent = JSON.stringify(obj, null, 2);
+
+				// // Datei bauen
+				// let blob = new Blob([jsonContent], { type: "application/json" });
+				// let a = document.createElement("a");
+				// a.href = URL.createObjectURL(blob);
+				// a.download = "cut_export.json";
+				// a.click();
+				// ----------------------- Ende fuer den Export der Schnitte als JSOn --------------------------------------------
+				
 				let obj = Object.fromEntries(cut_array.entries());
 
 				// JSON-String mit Einrückung (2 Spaces)
-				let jsonContent = JSON.stringify(obj, null, 2);
+				let values = Object.values(obj);
+				let value_array = values.flat();
+				// let jsonContent = JSON.stringify(obj, null, 2);
+				
+				console.log(values)
+				let dxf = DXFProfileExporter.toString_pointArray(value_array);
 
-				// Datei bauen
-				let blob = new Blob([jsonContent], { type: "application/json" });
 				let a = document.createElement("a");
-				a.href = URL.createObjectURL(blob);
-				a.download = "cut_export.json";
+				a.href = window.URL.createObjectURL(new Blob([dxf], {type: 'data:application/octet-stream'}));;
+				a.download = "cut_export.dxf";
 				a.click();
-
-				console.log(`Export abgeschlossen: ${cut_array.size} Gruppen, ${jsonContent.length} Zeichen`);
+				console.log(`Export abgeschlossen: ${value_array.length} Punkte wurden als DXF exportiert.`);
 			}
 		));
 
@@ -797,7 +816,7 @@ export class Sidebar{
 					event.preventDefault();
 				}
 			});
-
+			
 			let elDownloadDXF = elExport.find("img[name=dxf_export_button]").parent();
 			elDownloadDXF.click( (event) => {
 				let scene = this.viewer.scene;
