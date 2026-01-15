@@ -23,11 +23,11 @@ CIRCLE
 8
 layer_point
 10
-${position.x}
+${position.x + Potree.coordinateOffset.x}
 20
-${position.y}
+${position.y + Potree.coordinateOffset.y}
 30
-${position.z}
+${position.z + Potree.coordinateOffset.z}
 40
 1.0
 `;
@@ -75,11 +75,11 @@ VERTEX
 8
 0
 10
-${point.x}
+${point.x + Potree.coordinateOffset.x}
 20
-${point.y}
+${point.y + Potree.coordinateOffset.y}
 30
-${point.z}
+${point.z + Potree.coordinateOffset.z}
 70
 32
 `;
@@ -144,19 +144,19 @@ $INSBASE
 9
 $EXTMIN
 10
-${min.x}
+${min.x + Potree.coordinateOffset.x}
 20
-${min.y}
+${min.y + Potree.coordinateOffset.y}
 30
-${min.z}
+${min.z + Potree.coordinateOffset.z}
 9
 $EXTMAX
 10
-${max.x}
+${max.x + Potree.coordinateOffset.x}
 20
-${max.y}
+${max.y + Potree.coordinateOffset.y}
 30
-${max.z}
+${max.z + Potree.coordinateOffset.z}
 0
 ENDSEC
 `;

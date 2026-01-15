@@ -30,6 +30,8 @@ export class CSVExporter {
 		}
 		string = headerValues.join(', ') + '\n';
 
+		let coord = "x";
+
 		for (let i = 0; i < points.numPoints; i++) {
 			let values = [];
 
@@ -38,6 +40,20 @@ export class CSVExporter {
 				let value = points.data[attribute]
 					.subarray(itemSize * i, itemSize * i + itemSize)
 					.join(', ');
+				
+				if (attribute === 'position') {
+					let coordArray = value.split(", ");
+					coordArray[0] = Number(coordArray[0]) + Potree.coordinateOffset.x;
+					coordArray[1] = Number(coordArray[1]) + Potree.coordinateOffset.y;
+					coordArray[2] = Number(coordArray[2]) + Potree.coordinateOffset.z;
+
+					coordArray[0] = coordArray[0].toFixed(3);
+					coordArray[1] = coordArray[1].toFixed(3);
+					coordArray[2] = coordArray[2].toFixed(3);
+	
+					value = coordArray.join(", ");
+				}
+
 				values.push(value);
 			}
 

@@ -12,7 +12,14 @@ export class GeoJSONExporter{
 
 	static measurementToFeatures (measurement) {
 		let coords = measurement.points.map(e => e.position.toArray());
-
+		
+		for (let i = 0; i < coords.length; i++) {
+			// console.log(coords[i])
+			coords[i][0] = coords[i][0] + Potree.coordinateOffset.x;
+			coords[i][1] = coords[i][1] + Potree.coordinateOffset.y;
+			coords[i][2] = coords[i][2] + Potree.coordinateOffset.z;
+		}
+	
 		let features = [];
 
 		if (coords.length === 1) {
@@ -54,36 +61,38 @@ export class GeoJSONExporter{
 			features.push(object);
 		}
 
-		if (measurement.showDistances) {
-			measurement.edgeLabels.forEach((label) => {
-				let labelPoint = {
-					type: 'Feature',
-					geometry: {
-						type: 'Point',
-						coordinates: label.position.toArray()
-					},
-					properties: {
-						distance: label.text
-					}
-				};
-				features.push(labelPoint);
-			});
-		}
+		// -------------------- Die Punkte sind doppelt in der Geojson enthalten wenn die Distanz angezeigt wird das ist schwachsinn ---------------------------------------------
+		// if (measurement.showDistances) {
+		// 	measurement.edgeLabels.forEach((label) => {
+		// 		let labelPoint = {
+		// 			type: 'Feature',
+		// 			geometry: {
+		// 				type: 'Point',
+		// 				coordinates: label.position.toArray()
+		// 			},
+		// 			properties: {
+		// 				distance: label.text
+		// 			}
+		// 		};
+		// 		features.push(labelPoint);
+		// 	});
+		// }
 
-		if (measurement.showArea) {
-			let point = measurement.areaLabel.position;
-			let labelArea = {
-				type: 'Feature',
-				geometry: {
-					type: 'Point',
-					coordinates: point.toArray()
-				},
-				properties: {
-					area: measurement.areaLabel.text
-				}
-			};
-			features.push(labelArea);
-		}
+		// if (measurement.showArea) {
+		// 	let point = measurement.areaLabel.position;
+		// 	let labelArea = {
+		// 		type: 'Feature',
+		// 		geometry: {
+		// 			type: 'Point',
+		// 			coordinates: point.toArray()
+		// 		},
+		// 		properties: {
+		// 			area: measurement.areaLabel.text
+		// 		}
+		// 	};
+		// 	features.push(labelArea);
+		// }
+		// ----------------------------- Ende des Schwachsinns ---------------------------------------------------------------------------------------------------------------
 
 		return features;
 	}
