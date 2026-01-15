@@ -391,15 +391,15 @@ export class ProfileWindow extends EventDispatcher {
 							html += `
 								<tr>
 									<td>x</td>
-									<td>${values[0]}</td>
+									<td>${Number(values[0]) + Potree.coordinateOffset.x}</td>
 								</tr>
 								<tr>
 									<td>y</td>
-									<td>${values[1]}</td>
+									<td>${Number(values[1]) + Potree.coordinateOffset.y}</td>
 								</tr>
 								<tr>
 									<td>z</td>
-									<td>${values[2]}</td>
+									<td>${Number(values[2]) + Potree.coordinateOffset.z}</td>
 								</tr>`;
 						} else if (attributeName === 'rgba') {
 							html += `
