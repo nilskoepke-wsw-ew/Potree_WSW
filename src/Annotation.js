@@ -55,7 +55,7 @@ export class Annotation extends EventDispatcher {
 					<span class="annotation-description-close">
 						<img src="${iconClose}" width="16px">
 					</span>
-					<span class="annotation-description-content">${this._description}</span>
+					<span class="annotation-description-content"></span>
 				</div>
 			</div>
 		`);
@@ -64,6 +64,8 @@ export class Annotation extends EventDispatcher {
 		this.elTitle = this.elTitlebar.find('.annotation-label');
 		this.elTitle.append(this._title);
 		this.elDescription = this.domElement.find('.annotation-description');
+		this.elDescriptionContent = this.elDescription.find('.annotation-description-content');
+		this.elDescriptionContent.append(this._description);
 		this.elDescriptionClose = this.elDescription.find('.annotation-description-close');
 		// this.elDescriptionContent = this.elDescription.find(".annotation-description-content");
 
