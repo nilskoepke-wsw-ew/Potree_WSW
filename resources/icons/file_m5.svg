@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 17">
+
+  <defs>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Anton+SC%3Aital%2Cwght%400%2C400&amp;display=swap");
+    </style>
+  </defs>
+
+  <text
+    x="-23"
+    y="17"
+    style="fill:#ffffff; font-family:'Anton SC'; font-size:20px; font-weight:700; stroke:#000000; white-space:pre;">
+    M5
+  </text>
+
+</svg>
