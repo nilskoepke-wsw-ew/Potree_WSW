@@ -288,6 +288,7 @@ export class Measure extends THREE.Object3D {
 
 		this.name = 'Measure_' + this.constructor.counter;
 		this.points = [];
+
 		this._showDistances = true;
 		this._showCoordinates = false;
 		this._showArea = false;
@@ -631,7 +632,7 @@ export class Measure extends THREE.Object3D {
 
 			return;
 		}
-
+		
 		let lastIndex = this.points.length - 1;
 
 		let centroid = new THREE.Vector3();
@@ -649,7 +650,7 @@ export class Measure extends THREE.Object3D {
 			let point = this.points[index];
 			let nextPoint = this.points[nextIndex];
 			let previousPoint = this.points[previousIndex];
-
+				
 			let sphere = this.spheres[index];
 
 			// spheres

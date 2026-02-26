@@ -5,6 +5,8 @@ import {Utils} from "../utils.js";
 import {CameraMode} from "../defines.js";
 import { EventDispatcher } from "../EventDispatcher.js";
 
+export let point_number = 1;
+
 function updateAzimuth(viewer, measure){
 
 	const azimuth = measure.azimuth;
@@ -208,7 +210,10 @@ export class MeasuringTool extends EventDispatcher{
 		let insertionCallback = (e) => {
 			if (e.button === THREE.MOUSE.LEFT) {
 				measure.addMarker(measure.points[measure.points.length - 1].position.clone());
-
+				
+				measure.pointNumber.push(point_number);
+				point_number += 1;
+				
 				if (measure.points.length >= measure.maxMarkers) {
 					cancel.callback();
 				}
@@ -234,11 +239,20 @@ export class MeasuringTool extends EventDispatcher{
 		}
 
 		measure.addMarker(new THREE.Vector3(0, 0, 0));
+		
 		this.viewer.inputHandler.startDragging(
 			measure.spheres[measure.spheres.length - 1]);
-
 		this.viewer.scene.addMeasurement(measure);
+		
+		if (measure.name === "Area" || measure.name === "Distance"){
+			measure.pointNumber = [];
+		}
+		else {
+			measure.pointNumber = [point_number];
+			point_number += 1;
+		}
 
+		console.log(measure)
 		return measure;
 	}
 	
@@ -411,6 +425,7 @@ export class MeasuringTool extends EventDispatcher{
 					label.visible = false;
 				}
 			}
+			
 		}
 	}
 
