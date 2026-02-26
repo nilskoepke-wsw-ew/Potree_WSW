@@ -1,5 +1,6 @@
 import * as THREE from "../../libs/three.js/build/three.module.js";
 import {GeoJSONExporter} from "../exporter/GeoJSONExporter.js"
+import {M5Exporter} from "../exporter/M5Exporter.js"
 import {DXFExporter} from "../exporter/DXFExporter.js"
 import {Volume, SphereVolume} from "../utils/Volume.js"
 import {PolygonClipVolume} from "../utils/PolygonClipVolume.js"
@@ -793,12 +794,14 @@ export class Sidebar{
 			let geoJSONIcon = `${Potree.resourcePath}/icons/file_geojson.svg`;
 			let dxfIcon = `${Potree.resourcePath}/icons/file_dxf.svg`;
 			let potreeIcon = `${Potree.resourcePath}/icons/file_potree.svg`;
+			let m5Icon = `${Potree.resourcePath}/icons/file_m5.svg`;
 
 			elExport.append(`
 				Export: <br>
 				<a href="#" download="measure.json"><img name="geojson_export_button" src="${geoJSONIcon}" class="button-icon" style="height: 24px" /></a>
 				<a href="#" download="measure.dxf"><img name="dxf_export_button" src="${dxfIcon}" class="button-icon" style="height: 24px" /></a>
 				<a href="#" download="potree.json5"><img name="potree_export_button" src="${potreeIcon}" class="button-icon" style="height: 24px" /></a>
+				<a href="#" download="messpunkte.dat"><img name="m5_export_button" src="${m5Icon}" class="button-icon" style="height: 24px" /></a>	
 			`);
 
 			let elDownloadJSON = elExport.find("img[name=geojson_export_button]").parent();
@@ -811,6 +814,22 @@ export class Sidebar{
 
 					let url = window.URL.createObjectURL(new Blob([geoJson], {type: 'data:application/octet-stream'}));
 					elDownloadJSON.attr('href', url);
+				}else{
+					this.viewer.postError("no measurements to export");
+					event.preventDefault();
+				}
+			});
+
+			let elDownloadM5 = elExport.find("img[name=m5_export_button]").parent();
+			elDownloadM5.click( (event) => {
+				let scene = this.viewer.scene;
+				let measurements = [...scene.measurements, ...scene.profiles, ...scene.volumes];
+
+				if(measurements.length > 0){
+					let m5 = M5Exporter.toString(measurements);
+
+					let url = window.URL.createObjectURL(new Blob([m5], {type: 'data:application/octet-stream'}));
+					elDownloadM5.attr('href', url);
 				}else{
 					this.viewer.postError("no measurements to export");
 					event.preventDefault();
