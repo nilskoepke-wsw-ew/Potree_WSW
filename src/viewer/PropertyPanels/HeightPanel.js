@@ -37,7 +37,7 @@ export class HeightPanel extends MeasurePanel{
 	update(){
 		let elCoordiantesContainer = this.elContent.find('.coordinates_table_container');
 		elCoordiantesContainer.empty();
-		elCoordiantesContainer.append(this.createCoordinatesTable(this.measurement.points.map(p => p.position)));
+		elCoordiantesContainer.append(this.createCoordinatesTable(this.measurement.points.map(p => p.position), this.measurement));
 
 		{
 			let points = this.measurement.points;

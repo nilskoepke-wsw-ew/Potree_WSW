@@ -12,10 +12,11 @@ export class MeasurePanel{
 		this._update = () => { this.update(); };
 	}
 
-	createCoordinatesTable(points){
+	createCoordinatesTable(points, measurement){
 		let table = $(`
 			<table class="measurement_value_table">
 				<tr>
+					<th>nr</th>
 					<th>x</th>
 					<th>y</th>
 					<th>z</th>
@@ -26,12 +27,13 @@ export class MeasurePanel{
 
 		let copyIconPath = Potree.resourcePath + '/icons/copy.svg';
 
+		let i = 0;
 		for (let point of points) {
 			// wsw
 			let newX = point.x;
 			let newY = point.y;
 			let newZ = point.z;
-
+			
 			let xoff = newX + Potree.coordinateOffset.x;
 			let yoff = newY + Potree.coordinateOffset.y;
 			let zoff = newZ + Potree.coordinateOffset.z;
@@ -39,10 +41,13 @@ export class MeasurePanel{
 			let x = Utils.addCommas(xoff.toFixed(3));
 			let y = Utils.addCommas(yoff.toFixed(3));
 			let z = Utils.addCommas(zoff.toFixed(3));
+			let nr = measurement.pointNumber[i];
+			i += 1;
 			// end wsw
 			
 			let row = $(`
 				<tr>
+					<td><span>${nr}</span></td>
 					<td><span>${x}</span></td>
 					<td><span>${y}</span></td>
 					<td><span>${z}</span></td>

@@ -48,7 +48,7 @@ export class AnglePanel extends MeasurePanel{
 	update(){
 		let elCoordiantesContainer = this.elContent.find('.coordinates_table_container');
 		elCoordiantesContainer.empty();
-		elCoordiantesContainer.append(this.createCoordinatesTable(this.measurement.points.map(p => p.position)));
+		elCoordiantesContainer.append(this.createCoordinatesTable(this.measurement.points.map(p => p.position), this.measurement));
 
 		let angles = [];
 		for(let i = 0; i < this.measurement.points.length; i++){

@@ -37,7 +37,7 @@ export class CirclePanel extends MeasurePanel{
 	update(){
 		let elCoordiantesContainer = this.elContent.find('.coordinates_table_container');
 		elCoordiantesContainer.empty();
-		elCoordiantesContainer.append(this.createCoordinatesTable(this.measurement.points.map(p => p.position)));
+		elCoordiantesContainer.append(this.createCoordinatesTable(this.measurement.points.map(p => p.position), this.measurement));
 
 		const elInfos = this.elContent.find(`#infos_table`);
 

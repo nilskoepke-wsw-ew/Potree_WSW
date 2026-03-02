@@ -344,7 +344,7 @@ export class VolumePanel extends MeasurePanel{
 	update(){
 		let elCoordiantesContainer = this.elContent.find('.coordinates_table_container');
 		elCoordiantesContainer.empty();
-		elCoordiantesContainer.append(this.createCoordinatesTable([this.measurement.position]));
+		elCoordiantesContainer.append(this.createCoordinatesTable([this.measurement.position]), this.measurement);
 
 		{
 			let angles = this.measurement.rotation.toVector3();

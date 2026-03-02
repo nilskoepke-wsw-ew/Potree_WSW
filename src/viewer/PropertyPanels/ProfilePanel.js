@@ -107,7 +107,7 @@ export class ProfilePanel extends MeasurePanel{
 	update(){
 		let elCoordiantesContainer = this.elContent.find('.coordinates_table_container');
 		elCoordiantesContainer.empty();
-		elCoordiantesContainer.append(this.createCoordinatesTable(this.measurement.points));
+		elCoordiantesContainer.append(this.createCoordinatesTable(this.measurement.points), this.measurement);
 	}
 
 	async download(){
