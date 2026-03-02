@@ -491,6 +491,7 @@ export class Annotation extends EventDispatcher {
 			if (this._description) {
 				this.descriptionVisible = true;
 				this.elDescription.fadeIn(200);
+				this.elDescriptionContent.append(this._description)
 				this.elDescription.css('position', 'relative');
 			}
 		} else {
