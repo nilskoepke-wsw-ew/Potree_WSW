@@ -41,7 +41,7 @@ export class MeasurePanel{
 			let x = Utils.addCommas(xoff.toFixed(3));
 			let y = Utils.addCommas(yoff.toFixed(3));
 			let z = Utils.addCommas(zoff.toFixed(3));
-			let nr = measurement.pointNumber[i];
+			let nr = this.measurement.pointNumber[i];
 			i += 1;
 			// end wsw
 			
