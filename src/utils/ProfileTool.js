@@ -4,7 +4,6 @@ import {Profile} from "./Profile.js";
 import {Utils} from "../utils.js";
 import { EventDispatcher } from "../EventDispatcher.js";
 
-
 export class ProfileTool extends EventDispatcher {
 	constructor (viewer) {
 		super();
@@ -80,6 +79,9 @@ export class ProfileTool extends EventDispatcher {
 				}
 
 				profile.addMarker(profile.points[profile.points.length - 1].clone());
+				
+				profile.pointNumber.push(Potree.point_number);
+				Potree.point_number += 1;
 
 				this.viewer.inputHandler.startDragging(
 					profile.spheres[profile.spheres.length - 1]);
@@ -103,6 +105,11 @@ export class ProfileTool extends EventDispatcher {
 
 		this.viewer.scene.addProfile(profile);
 
+		profile.pointNumber = [Potree.point_number];
+		Potree.point_number += 1;
+		
+
+		console.log(profile);
 		return profile;
 	}
 	
