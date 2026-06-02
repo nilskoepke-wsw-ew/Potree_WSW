@@ -422,18 +422,44 @@ export class Utils {
 		let closestIntersection = null;
 		let closestPoint = null;
 		
+		// Test Nils
+		var intersects = raycaster.intersectObjects(viewer.scene.scene.children, true);
+		console.log(intersects)
+		let distance = 0;
+		
 		for(let pointcloud of pointclouds){
 			let point = pointcloud.pick(viewer, camera, ray, pickParams);
 			
-			if(!point){
-				continue;
+			if (!point) {
+				if (intersects.length > 0) {
+					point = intersects[0].point;
+					point.position = point;               // add position attribute
+					distance = intersects[0].distance;
+				} else {
+					continue;
+				}
+			} else {
+				distance = camera.position.distanceTo(point.position);
 			}
 
-			let distance = camera.position.distanceTo(point.position);
+			// let distance = camera.position.distanceTo(point.position);
 
 			if (distance < closestDistance) {
 				closestDistance = distance;
 				selectedPointcloud = pointcloud;
+				closestIntersection = point.position;
+				closestPoint = point;
+			}
+		}
+
+		if (intersects.length > 0){
+			let point = intersects[0].point;
+			point.position = point;
+			
+			distance = intersects[0].distance;
+
+			if (distance < closestDistance){
+				closestDistance = distance;
 				closestIntersection = point.position;
 				closestPoint = point;
 			}
