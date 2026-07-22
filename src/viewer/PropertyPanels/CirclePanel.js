@@ -60,7 +60,7 @@ export class CirclePanel extends MeasurePanel{
 		};
 
 		
-		const txtCenter = `${format(center.x)} ${format(center.y)} ${format(center.z)}`;
+		const txtCenter = `${format(center.x + Potree.coordinateOffset.x)} ${format(center.y + Potree.coordinateOffset.y)} ${format(center.z + Potree.coordinateOffset.z)}`;
 		const txtRadius = format(radius);
 		const txtCircumference = format(circumference);
 
