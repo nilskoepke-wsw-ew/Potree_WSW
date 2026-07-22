@@ -519,9 +519,10 @@ export class Sidebar{
 		// Button Annotations exportieren
 		elAnnotation.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/annotation_wsw_download.svg',
-			'[title]Aktuelle Beschriftungen exportieren',
+			'[title]Projekt speichern',
 			() => {
 				$('#menu_measurements').next().slideDown(); ;
+				// Beschriftungen sammeln
 				let annotations = this.viewer.scene.annotations.children;
 				let annotationList = [];
 				for (let i = 0; i < annotations.length; i++){
@@ -534,9 +535,126 @@ export class Sidebar{
 				
 				console.log(annotationList);
 
+				// Messungen sammeln
+				let features = [];
+
+				this.viewer.scene.measurements.forEach(measurement => {
+					let type = measurement.name;
+
+					let coords = measurement.points.map(p => [
+						p.position.x,
+						p.position.y,
+						p.position.z
+					]);
+
+					let geometry;
+
+					switch(type){
+						case "Point":
+							geometry = {
+								type: "Point",
+								coordinates: coords[0]
+							};
+							break;
+						case "Area":
+						case "Angle":
+							let polygon = [...coords];
+
+							if(polygon.length > 0){
+								let first = polygon[0];
+								let last = polygon[polygon.length - 1];
+
+								if(JSON.stringify(first) !== JSON.stringify(last)){
+									polygon.push(first);
+								}
+							}
+
+							geometry = {
+								type: "Polygon",
+								coordinates: [polygon]
+							};
+
+							break;
+
+						default:
+							geometry = {
+								type: "LineString",
+								coordinates: coords
+							};
+					}
+					features.push({
+						type: "Feature",
+						geometry: geometry,
+						properties: {
+							name: type
+						}
+					});
+				});
+
+				// Kameraposition und Ausrichtung speichern
+				let cameraData = {
+					position: {
+						x: this.viewer.scene.view.position.x,
+						y: this.viewer.scene.view.position.y,
+						z: this.viewer.scene.view.position.z
+					},
+					target: {
+						x: this.viewer.scene.view.getPivot().x,
+						y: this.viewer.scene.view.getPivot().y,
+						z: this.viewer.scene.view.getPivot().z
+					}
+				};
+				// Clip-Volumes erzeugen
+				let clipVolumes = [];
+
+				this.viewer.scene.volumes.forEach(volume => {
+					clipVolumes.push({
+						name: volume.name,
+						clip: volume.clip,
+						visible: volume.visible,
+						modifiable: volume.modifieable,
+
+						position: {
+							x: volume.position.x,
+							y: volume.position.y,
+							z: volume.position.z
+						},
+
+						rotation: {
+							x: volume.rotation.x,
+							y: volume.rotation.y,
+							z: volume.rotation.z
+						},
+
+						scale: {
+							x: volume.scale.x,
+							y: volume.scale.y,
+							z: volume.scale.z
+						}
+					});
+				});
+
+				// Export-Objekte erzeugen
+				let exportData = {
+
+					version: 1,
+				
+					camera: cameraData,
+				
+					annotations: annotationList,
+				
+					measurements: {
+						type: "FeatureCollection",
+						features: features
+					},
+
+					clipVolumes: clipVolumes
+				
+				};
+
 				try {
 					// 1. JSON-Text erzeugen
-					let jsonString = JSON.stringify(annotationList, null, 2);
+					let jsonString = JSON.stringify(exportData, null, 2);
 
 					// 2. Blob erzeugen
 					let blob = new Blob([jsonString], { type: "application/json" });
@@ -545,22 +663,83 @@ export class Sidebar{
 					let url = URL.createObjectURL(blob);
 					let a = document.createElement("a");
 					a.href = url;
-					a.download = "annotations.json";
+					a.download = "potree_workspace.json";
 					a.click();
 
 					// 4. Aufräumen
 					URL.revokeObjectURL(url);
-					alert(`Es wurden ${annotationList.length} Bemerkungen erfolgreich heruntergeladen.`)
+					this.viewer.postMessage("Projekt erfolgreich gespeicher!");
 				} catch (err){
 					console.error(err);
-					alert("Fehler beim Exportieren der Bemerkungen.");
+					this.viewer.postError("Fehler beim Speichern des Projektes.");
 				}
 			}
 		));
 
+		// ########################### Hilfsfunktion Messungen #############
+		function createMeasurement(type){
+
+			let measurement = new Potree.Measure();
+		
+			switch(type){
+		
+				case "Distance":
+					measurement.name = "Distance";
+					measurement.showDistances = true;
+					break;
+		
+				case "Point":
+					measurement.name = "Point";
+					measurement.maxMarkers = 1;
+					measurement.showDistances = false;
+					measurement.showCoordinates = true;
+					measurement.showArea = false;
+					measurement.showAngles = false;
+					measurement.showHeight = false;
+					measurement.showCircle = false;
+					measurement.closed = false;
+
+					break;
+		
+				case "Area":
+					measurement.name = "Area";
+					measurement.showDistances = true;
+					measurement.showArea = true;
+					measurement.closed = true;
+					break;
+		
+				case "Angle":
+					measurement.name = "Angle";
+					measurement.showAngles = true;
+					measurement.showDistances = false;
+					measurement.closed = true;
+					break;
+		
+				case "Height":
+					measurement.name = "Height";
+					measurement.showHeight = true;
+					break;
+		
+				case "Circle":
+					measurement.name = "Circle";
+					measurement.showCircle = true;
+					measurement.showEdges = false;
+					break;
+				
+				case "Azimuth":
+					measurement.name = "Azimuth";
+					measurement.showAngles = false;
+					measurement.showArea = false;
+					measurement.showAzimuth = true;
+					measurement.showDistances = false;
+			}
+		
+			return measurement;
+		}
+		
 		elAnnotation.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/annotation_wsw_upload.svg',
-			'[title]Beschriftungen aus JSON laden',
+			'[title]Projekt laden',
 			() => {
 		
 				// Hidden File-Input erzeugen
@@ -575,40 +754,128 @@ export class Sidebar{
 					try {
 						// Datei einlesen
 						let text = await file.text();
-						let annotationList = JSON.parse(text);
-		
-						// Prüfen, ob Liste gültig ist
-						if (!Array.isArray(annotationList)) {
-							alert("Die JSON-Datei enthält keine Liste von Beschriftungen.");
+						let workspace = JSON.parse(text);
+
+						if (!workspace.version) {
+							this.viewer.postError("Ungültige Projekt-Datei!");
 							return;
 						}
 		
 						// Jede Annotation hinzufügen
-						annotationList.forEach(item => {
-		
-							// Position in Vector3 umwandeln
-							let pos = new THREE.Vector3(
-								item.position.x || item.position[0],
-								item.position.y || item.position[1],
-								item.position.z || item.position[2]
-							);
-		
-							// Annotation erzeugen
-							let annotation = new Potree.Annotation({
-								position: pos,
-								title: item.title || "Ohne Titel",
-								description: item.description || ""
+						if (workspace.annotations) {
+
+							workspace.annotations.forEach(item => {
+						
+								let pos = new THREE.Vector3(
+									item.position.x,
+									item.position.y,
+									item.position.z
+								);
+						
+								let annotation = new Potree.Annotation({
+									position: pos,
+									title: item.title || "Ohne Titel",
+									description: item.description || ""
+								});
+						
+								this.viewer.scene.annotations.add(annotation);
+						
 							});
-		
-							// In Szene einfügen
-							this.viewer.scene.annotations.add(annotation);
-						});
-		
-						console.log("Imported annotations: ", annotationList);
-		
+							console.log("Imported annotations: ", workspace.annotations);
+						}
+
+						// Messungen hinzufügen
+						if (workspace.measurements && workspace.measurements.features){
+							workspace.measurements.features.forEach(feature => {
+								let type = feature.properties.name;
+								let measurement = createMeasurement(type);
+								let coordinates = [];
+						
+								switch(feature.geometry.type){
+									case "Point":
+										coordinates =  [feature.geometry.coordinates];
+										break;
+									case "LineString":
+										coordinates = feature.geometry.coordinates;
+										break;
+									case "Polygon":
+										coordinates = feature.geometry.coordinates[0];
+										// letzten Punkt entfernen
+										// Polygon ist in GeoJSON geschlossen
+										if(coordinates.length > 1){
+											coordinates.pop();
+										}
+										break;
+								}
+						
+								coordinates.forEach(coord => {
+									measurement.addMarker(
+										new THREE.Vector3(
+											coord[0],
+											coord[1],
+											coord[2]
+										)
+									);
+								});
+						
+								this.viewer.scene.addMeasurement(
+									measurement
+								);
+						
+							});
+
+							// Kamera hinzufügen
+							this.viewer.scene.view.position.set(
+								workspace.camera.position.x,
+								workspace.camera.position.y,
+								workspace.camera.position.z
+							);
+
+							this.viewer.scene.view.lookAt(
+								new THREE.Vector3(
+									workspace.camera.target.x,
+									workspace.camera.target.y,
+									workspace.camera.target.z
+								)
+							);					
+							
+							// Clipping Volumes hinzufügen
+							if(workspace.clipVolumes){
+								workspace.clipVolumes.forEach(item => {
+									let volume = new Potree.BoxVolume();
+									volume.name = item.name || "Volume";
+							
+									volume.position.set(
+										item.position.x,
+										item.position.y,
+										item.position.z
+									);
+							
+									volume.rotation.set(
+										item.rotation.x,
+										item.rotation.y,
+										item.rotation.z
+									);
+							
+									volume.scale.set(
+										item.scale.x,
+										item.scale.y,
+										item.scale.z
+									);
+							
+									volume.clip = item.clip;
+									volume.visible = item.visible;
+							
+									this.viewer.scene.addVolume(volume);
+								});
+							}
+						}
+
+						
+						
 					} catch (err) {
 						console.error(err);
-						alert("Fehler beim Lesen der JSON-Datei.");
+						this.viewer.postError("Fehler beim Lesen der Projekt-Datei.");
 					}
 				};
 		
@@ -616,7 +883,6 @@ export class Sidebar{
 				input.click();
 			}
 		));
-		
 
 		// Button Nils einzelne Schnitte setzen (testing)
 		elToolbar.append(this.createToolIcon(
@@ -729,10 +995,19 @@ export class Sidebar{
 			Potree.resourcePath + '/icons/Grabenvolumen.svg',
 			'[title]Grabenvolumen berechnen',
 			() => {
-				const area = viewer.scene.measurements[0];
-				calculateVolumeUnderMeasurement(viewer, area).then(vol => {
-					alert(`Volumen: ${vol.toFixed(2)} m³`);
-				});
+				if (this.viewer.scene.measurements.length > 1){
+					this.viewer.postError("Mehr als eine Messung vorhanden. Für Volumenberechnung bitte eine Polygongeometrie erstellen.");
+				}
+				else if (this.viewer.scene.measurements.length === 0){
+					this.viewer.postError("Keine Messung vorhanden. Für Volumenberechnung bitte eine Polygongeometrie erstellen.");
+				}
+				else {
+					const area = this.viewer.scene.measurements[0];
+					calculateVolumeUnderMeasurement(this.viewer, area).then(vol => {
+						alert(`Volumen: ${vol.toFixed(2)} m³`);
+					});
+				}
+				
 			}
 
 		));
@@ -742,17 +1017,26 @@ export class Sidebar{
 			Potree.resourcePath + '/icons/Objektvolumen.svg',
 			'[title]Objektvolumen berechnen',
 			() => {
-				// das erste volume/box von den vorhandenen ziehen
-				let box = this.viewer.scene.volumes[0].clone();
-				const pointCloud = this.viewer.scene.pointclouds[0];
+				if (this.viewer.scene.measurements.length > 1){
+					this.viewer.postError("Mehr als eine Messung vorhanden. Für Volumenberechnung bitte eine Clipping-Box erstellen.");
+				}
+				else if (this.viewer.scene.measurements.length === 0){
+					this.viewer.postError("Keine Messung vorhanden. Für Volumenberechnung bitte eine Polygongeometrie erstellen.");
+				}
+				else {
+					// das erste volume/box von den vorhandenen ziehen
+					let box = this.viewer.scene.volumes[0].clone();
+					const pointCloud = this.viewer.scene.pointclouds[0];
 
-				console.log(box)
-				// console.log(`Die erste Box mit dem Volumen: ${box.getVolume()}`);
-				// console.log(`Das Volumen wird prozessiert, die Ausgangsbox ist: ${box}`);
+					console.log(box)
+					// console.log(`Die erste Box mit dem Volumen: ${box.getVolume()}`);
+					// console.log(`Das Volumen wird prozessiert, die Ausgangsbox ist: ${box}`);
+					
+					calculateVoxelVolume(box, pointCloud, 0.05).then(vol => {
+						alert(`Volumen: ${vol.toFixed(2)} m³`);
+					});
+				}
 				
-				calculateVoxelVolume(box, pointCloud, 0.05).then(vol => {
-					alert(`Volumen: ${vol.toFixed(2)} m³`);
-				});
 			}
 
 		));
