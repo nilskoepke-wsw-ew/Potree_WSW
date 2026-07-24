@@ -794,12 +794,16 @@ export class Sidebar{
 								switch(feature.geometry.type){
 									case "Point":
 										coordinates =  [feature.geometry.coordinates];
+										measurement.pointNumber = [Potree.point_number];
+										Potree.point_number += 1;
 										break;
 									case "LineString":
 										coordinates = feature.geometry.coordinates;
+										measurement.pointNumber = [];
 										break;
 									case "Polygon":
 										coordinates = feature.geometry.coordinates[0];
+										measurement.pointNumber = [];
 										// letzten Punkt entfernen
 										// Polygon ist in GeoJSON geschlossen
 										if(coordinates.length > 1){
@@ -816,60 +820,63 @@ export class Sidebar{
 											coord[2]
 										)
 									);
+									
+									measurement.pointNumber.push(Potree.point_number);
+									Potree.point_number += 1;
 								});
 						
 								this.viewer.scene.addMeasurement(
 									measurement
 								);
-						
 							});
-
-							// Kamera hinzufügen
-							this.viewer.scene.view.position.set(
-								workspace.camera.position.x,
-								workspace.camera.position.y,
-								workspace.camera.position.z
-							);
-
-							this.viewer.scene.view.lookAt(
-								new THREE.Vector3(
-									workspace.camera.target.x,
-									workspace.camera.target.y,
-									workspace.camera.target.z
-								)
-							);					
-							
-							// Clipping Volumes hinzufügen
-							if(workspace.clipVolumes){
-								workspace.clipVolumes.forEach(item => {
-									let volume = new Potree.BoxVolume();
-									volume.name = item.name || "Volume";
-							
-									volume.position.set(
-										item.position.x,
-										item.position.y,
-										item.position.z
-									);
-							
-									volume.rotation.set(
-										item.rotation.x,
-										item.rotation.y,
-										item.rotation.z
-									);
-							
-									volume.scale.set(
-										item.scale.x,
-										item.scale.y,
-										item.scale.z
-									);
-							
-									volume.clip = item.clip;
-									volume.visible = item.visible;
-							
-									this.viewer.scene.addVolume(volume);
-								});
-							}
 						}
+
+						// Kamera hinzufügen
+						this.viewer.scene.view.position.set(
+							workspace.camera.position.x,
+							workspace.camera.position.y,
+							workspace.camera.position.z
+						);
+
+						this.viewer.scene.view.lookAt(
+							new THREE.Vector3(
+								workspace.camera.target.x,
+								workspace.camera.target.y,
+								workspace.camera.target.z
+							)
+						);					
+						
+						// Clipping Volumes hinzufügen
+						if(workspace.clipVolumes){
+							workspace.clipVolumes.forEach(item => {
+								let volume = new Potree.BoxVolume();
+								volume.name = item.name || "Volume";
+						
+								volume.position.set(
+									item.position.x,
+									item.position.y,
+									item.position.z
+								);
+						
+								volume.rotation.set(
+									item.rotation.x,
+									item.rotation.y,
+									item.rotation.z
+								);
+						
+								volume.scale.set(
+									item.scale.x,
+									item.scale.y,
+									item.scale.z
+								);
+						
+								volume.clip = item.clip;
+								volume.visible = item.visible;
+						
+								this.viewer.scene.addVolume(volume);
+							});
+						}
+					
 
 						
 						
