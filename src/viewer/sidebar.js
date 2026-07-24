@@ -311,7 +311,7 @@ export class Sidebar{
 
 		elToolbar.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/angle.png',
-			'[title]tt.angle_measurement',
+			'[title]Winkel messen',
 			() => {
 				$('#menu_measurements').next().slideDown();
 				let measurement = this.measuringTool.startInsertion({
@@ -332,7 +332,7 @@ export class Sidebar{
 		// POINT
 		elToolbar.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/point.svg',
-			'[title]tt.point_measurement',
+			'[title]Koordinate messen',
 			() => {
 				$('#menu_measurements').next().slideDown();
 				let measurement = this.measuringTool.startInsertion({
@@ -354,7 +354,7 @@ export class Sidebar{
 		// DISTANCE
 		elToolbar.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/distance.svg',
-			'[title]tt.distance_measurement',
+			'[title]Strecke messen',
 			() => {
 				$('#menu_measurements').next().slideDown();
 				let measurement = this.measuringTool.startInsertion({
@@ -373,7 +373,7 @@ export class Sidebar{
 		// HEIGHT
 		elToolbar.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/height.svg',
-			'[title]tt.height_measurement',
+			'[title]Höhendifferenzen',
 			() => {
 				$('#menu_measurements').next().slideDown();
 				let measurement = this.measuringTool.startInsertion({
@@ -394,7 +394,7 @@ export class Sidebar{
 		// CIRCLE
 		elToolbar.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/circle.svg',
-			'[title]tt.circle_measurement',
+			'[title]Kreis aus drei Punkten',
 			() => {
 				$('#menu_measurements').next().slideDown();
 				let measurement = this.measuringTool.startInsertion({
@@ -441,7 +441,7 @@ export class Sidebar{
 		// AREA
 		elToolbar.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/area.svg',
-			'[title]tt.area_measurement',
+			'[title]Fläche messen',
 			() => {
 				$('#menu_measurements').next().slideDown();
 				let measurement = this.measuringTool.startInsertion({
@@ -488,7 +488,7 @@ export class Sidebar{
 		// PROFILE
 		elToolbar.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/profile.svg',
-			'[title]tt.height_profile',
+			'[title]Profil',
 			() => {
 				$('#menu_measurements').next().slideDown(); ;
 				let profile = this.profileTool.startInsertion();
@@ -503,7 +503,7 @@ export class Sidebar{
 		// ANNOTATION
 		elAnnotation.append(this.createToolIcon(
 			Potree.resourcePath + '/icons/annotation_wsw.svg',
-			'[title]tt.annotation',
+			'[title]Beschriftung',
 			() => {
 				$('#menu_measurements').next().slideDown(); ;
 				let annotation = this.viewer.annotationTool.startInsertion();
